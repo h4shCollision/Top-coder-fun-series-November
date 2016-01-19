@@ -1,0 +1,89 @@
+import sys
+from sklearn.grid_search import GridSearchCV as gs
+from sklearn.tree import DecisionTreeClassifier as dt
+from sklearn.naive_bayes import GaussianNB as nb
+from sklearn.cross_validation import train_test_split as tts
+from math import sin,pi
+from sklearn.linear_model import LinearRegression as lr
+import numpy as np
+from sklearn.svm import SVC
+fp=sys.argv[1] if len(sys.argv)>1 else "i.txt" 
+f = open(fp)
+def raw_input():
+    return f.readline().strip()
+r=int(sys.argv[2]) if len(sys.argv)>2 else (4000*(25+50+100+200+4))
+t=16000
+l=[[] for _ in range(t)]
+for i in range(r):
+    a,b,c= map(lambda x:float(x), raw_input().split(","))
+    l[int(a)-1].append((int(b),c))
+si=[]
+for i in [25,50,100,200]:
+    f1=[]
+    f3=[]
+    for j in range(i+1):
+        f1.append(sin(j/float(i)*pi))
+        f3.append(sin(j/float(i)*pi*3))
+    si.append([f1,f3])
+ft=[]
+mx=0
+mn=0
+def to_feature(i):
+    num=len(i)
+    x=[len(filter(lambda x:x>0,i))/float(num),len(filter(lambda x:x<0,i))/float(num),sum(i)/float(num)]
+    x.extend([max(i),min(i)])
+    temp=[np.mean(i[num/4:]+i[num*3/4:]),np.mean(i[num*2/5:num*3/5])]
+    if temp[0]>10 or temp[1]>10:
+        print i
+    x.extend([np.mean(i[num/4:]+i[num*3/4:]),np.mean(i[num*2/5:num*3/5])])
+    ind=num/50 if num<200 else 3
+    linr=lr()
+    linr.fit(np.reshape(si[ind][0],(num,1)),i)
+    x.extend([linr.score(np.reshape(si[ind][0],(num,1)),i),linr.coef_[0]])
+    linr=lr()
+    linr.fit(np.reshape(si[ind][1],(num,1)),i)
+    x.extend([linr.score(np.reshape(si[ind][1],(num,1)),i),linr.coef_[0]])
+    return x
+def amptitude(l):
+    n=len(l)
+    l=[j[1]for j in l]
+    return l
+    amp=(abs(max(l))+abs(min(l)))
+    if amp==0:
+        return l
+    x=0
+    if n==26:
+        return [i/amp*4.90954232128 for i in l]
+    elif n==51:
+        return [i/amp*5.57597080411 for i in l]
+    elif n==101:
+        return [i/amp*6.11462017839 for i in l]
+    else:
+        return [i/amp*6.70866593422 for i in l]
+for i in l:
+    ft.append(to_feature(amptitude(i)))
+g=open("a.txt")
+lb=[]
+for i in range(t):
+    lb.append(g.readline().strip().split(',')[1])
+xtr,xts,ytr,yts=tts(ft,lb,test_size=0.33, random_state=42)
+par={"min_samples_split":(20,30,40,50),"criterion":('gini',"entropy")}
+clf=gs(dt(),par)
+clf.fit(xtr,ytr)
+clf1=nb()
+clf1.fit(xtr,ytr)
+clf2=SVC()
+clf2.fit(xtr,ytr)
+print clf.score(xts,yts)
+print clf1.score(xts,yts)
+print clf2.score(xts,yts)
+input=open("tc.txt")
+output=open("out.csv","w")
+data=[[] for _ in range(9600)]
+for i in range(909600):
+    a,b,c= map(lambda x:float(x), input.readline().strip().split(","))
+    data[int(a)-1].append((int(b),c))
+data=[to_feature(amptitude(i)) for i in data]
+data=clf2.predict(data)
+for i,j in enumerate(data,1):
+    output.write(str(i)+","+str(j)+"\n")
